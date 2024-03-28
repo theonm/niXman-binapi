@@ -15,6 +15,8 @@
 
 #include <type_traits>
 
+#include <boost/utility/string_view.hpp>
+
 //#include <iostream> // TODO: comment out
 
 namespace binapi {
@@ -37,7 +39,8 @@ __get_json(T &v, const char *member, const flatjson::fjson &j) {
 template<typename T>
 typename std::enable_if<std::is_same<T, double_type>::value>::type
 __get_json(T &v, const char *member, const flatjson::fjson &j) {
-    v.assign(j.at(member).to_string());
+    const auto s = j.at(member).to_string();
+    v.assign(s);
 }
 
 #define __BINAPI_GET2(obj, member, json) \
@@ -555,6 +558,11 @@ std::ostream &operator<<(std::ostream &os, const exchange_info_t::symbol_t &o) {
     os
     << "],"
     << "\"icebergAllowed\":" << (o.icebergAllowed ? "true" : "false") << ","
+    << "\"ocoAllowed\":" << (o.ocoAllowed ? "true" : "false") << ","
+    << "\"quoteOrderQtyMarketAllowed\":" << (o.quoteOrderQtyMarketAllowed ? "true" : "false") << ","
+    << "\"allowTrailingStop\":" << (o.allowTrailingStop ? "true" : "false") << ","
+    << "\"cancelReplaceAllowed\":" << (o.cancelReplaceAllowed ? "true" : "false") << ","
+
     << "\"filters\":[";
     for ( auto it = o.filters.begin(); it != o.filters.end(); ++it ) {
         os << *it;
@@ -745,6 +753,16 @@ exchange_info_t exchange_info_t::construct(const flatjson::fjson &json) {
 
             sym.filters.push_back(std::move(filter));
         }
+
+        const auto permissions = sit.at("permissions");
+        assert(permissions.is_array());
+        res.permissions = 0u;
+        for ( auto idx = 0u; idx < permissions.size(); ++idx ) {
+            const auto sflag = permissions.at(idx).to_sstring();
+            std::size_t flag = static_cast<std::size_t>(e_permissions_from_string(sflag.data()));
+            res.permissions |= flag;
+        }
+
         std::string symbol = sym.symbol;
         res.symbols.emplace(std::move(symbol), std::move(sym));
     }
@@ -782,8 +800,28 @@ std::ostream& operator<<(std::ostream &os, const exchange_info_t &o) {
             os << ",";
         }
     }
-    os
-    << "]";
+    os << "],";
+    static const std::size_t perms_arr[] = {
+         static_cast<std::underlying_type<e_permissions>::type>(e_permissions::NONE)
+        ,static_cast<std::underlying_type<e_permissions>::type>(e_permissions::SPOT)
+        ,static_cast<std::underlying_type<e_permissions>::type>(e_permissions::MARGIN)
+        ,static_cast<std::underlying_type<e_permissions>::type>(e_permissions::LEVERAGED)
+        ,static_cast<std::underlying_type<e_permissions>::type>(e_permissions::TRD_GRP_002)
+        ,static_cast<std::underlying_type<e_permissions>::type>(e_permissions::TRD_GRP_003)
+        ,static_cast<std::underlying_type<e_permissions>::type>(e_permissions::TRD_GRP_004)
+        ,static_cast<std::underlying_type<e_permissions>::type>(e_permissions::TRD_GRP_005)
+    };
+
+    os  << "\"permissions\":[";
+    for ( const auto *it = std::begin(perms_arr); it != std::end(perms_arr); ++it ) {
+        if ( o.permissions & (*it) ) {
+            os << "\"" << e_permissions_to_string(static_cast<e_permissions>(*it)) << "\"";
+            if ( std::next(it) != std::end(perms_arr) ) {
+                os << ",";
+            }
+        }
+    }
+    os << "]";
 
     os << "}";
 

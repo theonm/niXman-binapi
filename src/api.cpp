@@ -128,6 +128,7 @@ std::string hmac_sha256(const char *key, std::size_t klen, const char *data, std
     return b2a_hex(digest, dilen);
 }
 
+// unused for now
 bool verify_signature(const unsigned char* sig, std::size_t slen, const char* data, std::size_t dlen)
 {
     bool result = true;
@@ -157,7 +158,8 @@ bool verify_signature(const unsigned char* sig, std::size_t slen, const char* da
     return result;
 }
 
-static std::string rsa_sha256(const char* privkeyfile, std::size_t pklen, const char *data, std::size_t dlen )
+// unused for now
+std::string rsa_sha256(const char* privkeyfile, std::size_t /*pklen*/, const char *data, std::size_t dlen )
 {
     static EVP_PKEY *pkey = nullptr;
     if ( !pkey ) {
@@ -914,8 +916,8 @@ api::new_order(
         : e_time_to_string(time)
     ;
 
-    const char *responce_type = e_trade_resp_type_to_string(resp);
-    assert(responce_type);
+    const char *response_type = e_trade_resp_type_to_string(resp);
+    assert(response_type);
 
     const impl::init_list_type map = {
          {"symbol", symbol}
@@ -927,7 +929,7 @@ api::new_order(
         ,{"newClientOrderId", client_order_id}
         ,{"stopPrice", stop_price}
         ,{"icebergQty", iceberg_amount}
-        ,{"newOrderRespType", responce_type}
+        ,{"newOrderRespType", response_type}
     };
 
     return pimpl->post(true, "/api/v3/order", boost::beast::http::verb::post, map, std::move(cb));
@@ -957,8 +959,8 @@ api::new_test_order(
 
     const char *time_str = type == e_type::market ? nullptr : e_time_to_string(time);
 
-    const char *responce_type = e_trade_resp_type_to_string(resp);
-    assert(responce_type);
+    const char *response_type = e_trade_resp_type_to_string(resp);
+    assert(response_type);
 
     const impl::init_list_type map = {
          {"symbol", symbol}
@@ -970,7 +972,7 @@ api::new_test_order(
         ,{"newClientOrderId", client_order_id}
         ,{"stopPrice", stop_price}
         ,{"icebergQty", iceberg_amount}
-        ,{"newOrderRespType", responce_type}
+        ,{"newOrderRespType", response_type}
     };
 
     return pimpl->post(true, "/api/v3/order/test", boost::beast::http::verb::post, map, std::move(cb));

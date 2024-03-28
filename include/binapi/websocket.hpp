@@ -47,19 +47,24 @@ struct book_ticker_t;
 
 /*************************************************************************************************/
 
-struct websockets {
+struct websockets final {
     websockets(const websockets &) = delete;
     websockets& operator= (const websockets &) = delete;
     websockets(websockets &&) noexcept = default;
     websockets& operator= (websockets &&) noexcept = default;
 
     using on_message_received_cb = std::function<void(const char *channel, const char *ptr, std::size_t size)>;
+    using on_network_stat_cb = std::function<
+        void(std::size_t msg_recvd, std::size_t msg_recvd_avg, std::size_t bytes_recvd, std::size_t bytes_recvd_avg)
+    >;
 
     websockets(
          boost::asio::io_context &ioctx
         ,std::string host
         ,std::string port
-        ,on_message_received_cb cb = {}
+        ,on_message_received_cb msg_cb = {}
+        ,on_network_stat_cb stat_cb = {}
+        ,std::size_t stat_interval = 1 // in seconds
     );
     ~websockets();
 
@@ -75,8 +80,8 @@ struct websockets {
 
     // https://github.com/binance/binance-spot-api-docs/blob/master/web-socket-streams.md#klinecandlestick-streams
     using on_kline_received_cb = std::function<bool(const char *fl, int ec, std::string errmsg, kline_t msg)>;
-    // period - 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d, 3d, 1w, 1M
-    handle klines(const char *pair, const char *period, on_kline_received_cb cb);
+    // interval - 1s, 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d, 3d, 1w, 1M
+    handle klines(const char *pair, const char *interval, on_kline_received_cb cb);
 
     // https://github.com/binance/binance-spot-api-docs/blob/master/web-socket-streams.md#trade-streams
     using on_trade_received_cb = std::function<bool(const char *fl, int ec, std::string errmsg, trade_t msg)>;
@@ -105,10 +110,6 @@ struct websockets {
     // https://github.com/binance/binance-spot-api-docs/blob/master/web-socket-streams.md#individual-symbol-book-ticker-streams
     using on_book_received_cb = std::function<bool(const char *fl, int ec, std::string errmsg, book_ticker_t msg)>;
     handle book(const char *pair, on_book_received_cb cb);
-
-    // https://github.com/binance/binance-spot-api-docs/blob/master/web-socket-streams.md#all-book-tickers-stream
-    using on_books_received_cb = std::function<bool(const char *fl, int ec, std::string errmsg, book_ticker_t msg)>;
-    handle books(on_books_received_cb cb);
 
     using on_account_update_cb = std::function<bool(const char *fl, int ec, std::string errmsg, userdata::account_update_t msg)>;
     using on_balance_update_cb = std::function<bool(const char *fl, int ec, std::string errmsg, userdata::balance_update_t msg)>;
